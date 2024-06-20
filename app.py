@@ -1,4 +1,7 @@
+import tempfile
+import numpy as np
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import altair as alt
 import geopandas as gpd
@@ -12,18 +15,15 @@ departments = gpd.read_file('departements-version-simplifiee.geojson')
 # Data preprocessing
 baby_names.drop(baby_names[baby_names.preusuel == '_PRENOMS_RARES'].index, inplace=True)
 baby_names.drop(baby_names[baby_names.dpt == 'XX'].index, inplace=True)
+# # Merge datasets
+# names = departments.merge(baby_names, how='right', left_on='code', right_on='dpt')
+# # Drop the geometry column before groupby
+# names_no_geom = names.drop(columns='geometry')
 
-# Merge datasets
-names = departments.merge(baby_names, how='right', left_on='code', right_on='dpt')
-
-# Drop the geometry column before groupby
-names_no_geom = names.drop(columns='geometry')
-
-# Perform the groupby operation
-grouped = names_no_geom.groupby(['dpt', 'preusuel', 'sexe'], as_index=False).sum()
-
-# Merge the geometry data back in
-grouped = departments.merge(grouped, how='right', left_on='code', right_on='dpt')
+# # Perform the groupby operation
+# grouped = names_no_geom.groupby(['dpt', 'preusuel', 'sexe'], as_index=False).sum()
+# # Merge the geometry data back in
+# grouped = departments.merge(grouped, how='right', left_on='code', right_on='dpt')
 
 # Title of the app
 st.title('Interactive Baby Names Visualization in France')
@@ -40,6 +40,7 @@ if visualization == 'Baby Names Over Time':
     
     if names_list:
         subset = baby_names[baby_names['preusuel'].isin(names_list)]
+        st.write(subset)
         chart = alt.Chart(subset).mark_line().encode(
             x='annais:O',
             y='sum(nombre):Q',
@@ -53,11 +54,28 @@ elif visualization == 'Regional Effect':
     name = st.selectbox('Select a baby name', baby_names['preusuel'].unique())
     
     if name:
-        subset = grouped[grouped['preusuel'] == name]
-        alt.chart(subset).mark_geoshape(stroke='white').encode(
-            tooltip=['nom','code', 'nombre'],
-            color='nombre',
-        ).properties(width=800, height=600)
+        subset_name = baby_names[baby_names['preusuel'] == name]
+        data = departments.merge(subset_name, how='left', left_on='code', right_on='dpt')
+        arr = [i for i in data['annais'].unique() if type(i) == str]
+        year = st.selectbox('Select a year', arr)
+        if year :
+            chart_data = data[data['annais']==year]
+            chart_data = departments.merge(chart_data[["dpt", "nombre"]], how='left', left_on='code', right_on='dpt')
+            chart_data = chart_data.fillna(0)
+            chart_data = chart_data.drop(columns='dpt')
+            regional_chart = alt.Chart(chart_data).mark_geoshape(stroke='white').encode(
+                tooltip=['nom','code', 'nombre'],
+                color='nombre:N',
+            ).properties(width=800, height=600)
+            with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".html") as arquivo:
+                regional_chart.save(arquivo.name)
+                arquivo.flush()
+                HtmlFile = open(arquivo.name, 'r', encoding='utf-8')
+
+                # Load HTML file in HTML component for display on Streamlit page
+                components.html(HtmlFile.read(), height=620)
+            # st.altair_chart(regional_chart)
+
 
 
 # Visualization 3: Names by Sex Over Time
