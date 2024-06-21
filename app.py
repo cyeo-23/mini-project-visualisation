@@ -64,8 +64,8 @@ elif visualization == 'Regional Effect':
             chart_data = chart_data.drop(columns='dpt')
             regional_chart = alt.Chart(chart_data).mark_geoshape(stroke='white').encode(
                 tooltip=['nom','code', 'nombre'],
-                color='nombre:N',
-            ).properties(width=800, height=600)
+                color=alt.Color('nombre:Q', scale=alt.Scale(scheme='viridis'), legend=alt.Legend(title='Nombre')),
+            ).properties(width=600, height=600)
             with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".html") as arquivo:
                 regional_chart.save(arquivo.name)
                 arquivo.flush()
