@@ -40,7 +40,6 @@ if visualization == 'Baby Names Over Time':
     
     if names_list:
         subset = baby_names[baby_names['preusuel'].isin(names_list)]
-        st.write(subset)
         chart = alt.Chart(subset).mark_line().encode(
             x='annais:O',
             y='sum(nombre):Q',
