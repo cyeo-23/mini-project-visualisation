@@ -79,32 +79,28 @@ elif visualization == 'Regional Effect':
 
 # Visualization 3: Names by Sex Over Time
 elif visualization == 'Names by Sex Over Time':
-    st.header('Proportion of First Names by Sex Over Time')
+    st.header('Number of First Name by Sex Over Time')
     
-    male_names = st.multiselect('Select male baby names', baby_names[baby_names['sexe'] == 1]['preusuel'].unique())
-    female_names = st.multiselect('Select female baby names', baby_names[baby_names['sexe'] == 2]['preusuel'].unique())
-    
-    if male_names and female_names:
-        subset_male = baby_names[(baby_names['preusuel'].isin(male_names)) & (baby_names['sexe'] == 1)]
-        subset_female = baby_names[(baby_names['preusuel'].isin(female_names)) & (baby_names['sexe'] == 2)]
-        
-        subset_male['proportion'] = subset_male.groupby('annais')['nombre'].transform(lambda x: x / x.sum())
-        subset_female['proportion'] = subset_female.groupby('annais')['nombre'].transform(lambda x: x / x.sum())
-        
-        chart_male = alt.Chart(subset_male).mark_bar().encode(
+    name = st.selectbox('Select baby names', baby_names['preusuel'].unique())
+
+    # Check if any names are selected
+    if name:
+        # Subset data for selected names
+        subset = baby_names[baby_names['preusuel']==name]
+        subset = subset.groupby(['annais', 'sexe'])['nombre'].sum().reset_index()
+
+        # Create a combined chart for both male and female names
+        chart = alt.Chart(subset).mark_line(point=True).encode(
             x=alt.X('annais:O', title='Year'),
-            y=alt.Y('proportion:Q', title='Proportion'),
-            color='preusuel:N'
-        ).properties(width=400, height=400).facet(
-            column='sexe:N'
+            y=alt.Y('nombre:Q', title='Nombre'),
+            color='sexe:N',
+        ).properties(
+            width=800,
+            height=400,
+            title='Number of First Name by Sex Over Time'
+        # ).transform_loess(
+        #     'annais', 'nombre', groupby=['preusuel', 'sexe'], bandwidth=0.5
         )
         
-        chart_female = alt.Chart(subset_female).mark_bar().encode(
-            x=alt.X('annais:O', title='Year'),
-            y=alt.Y('proportion:Q', title='Proportion'),
-            color='preusuel:N'
-        ).properties(width=400, height=400).facet(
-            column='sexe:N'
-        )
-        
-        st.altair_chart(chart_male & chart_female)
+        # Display the chart
+        st.altair_chart(chart)
